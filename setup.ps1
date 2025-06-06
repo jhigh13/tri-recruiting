@@ -63,15 +63,33 @@ foreach ($dir in $directories) {
     }
 }
 
-# Copy .env.example to .env if it doesn't exist
+# Create .env file with SQLite configuration
 if (!(Test-Path ".env")) {
-    Copy-Item ".env.example" ".env"
-    Write-Host "Created .env file from template. Please update with your settings." -ForegroundColor Yellow
+    @"
+# Database Configuration - Using SQLite for local development
+DATABASE_URL=sqlite:///data/tri_talent.db
+
+# Web Scraping Configuration
+CHROMEDRIVER_PATH=C:\chromedriver\chromedriver.exe
+USER_AGENT=USA-Triathlon-TalentID-Pipeline/1.0
+
+# Rate Limiting (seconds between requests)
+SCRAPE_DELAY=2
+MAX_RETRIES=3
+
+# Optional: AI Integration (for future use)
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Pipeline Configuration
+YEARS_TO_SCRAPE=5
+MAX_ATHLETES_PER_EVENT=500
+"@ | Out-File -FilePath ".env" -Encoding UTF8
+    Write-Host "Created .env file with SQLite configuration." -ForegroundColor Yellow
 }
 
 Write-Host "`nSetup complete! Next steps:" -ForegroundColor Green
-Write-Host "1. Update .env file with your database and ChromeDriver settings" -ForegroundColor White
-Write-Host "2. Start PostgreSQL: docker compose -f docker/postgres-compose.yml up -d" -ForegroundColor White
-Write-Host "3. Run database setup: python db/create_tables.py" -ForegroundColor White
+Write-Host "1. Update ChromeDriver path in .env file if needed" -ForegroundColor White
+Write-Host "2. Run database setup: python db/create_tables.py" -ForegroundColor White
+Write-Host "3. Load time standards: python etl/extract_standards.py" -ForegroundColor White
 Write-Host "`nTo activate the environment in the future, run:" -ForegroundColor Green
 Write-Host ".\.venv\Scripts\Activate.ps1" -ForegroundColor White

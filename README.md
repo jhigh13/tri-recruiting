@@ -15,7 +15,6 @@ This pipeline:
 
 ### Prerequisites
 - Python 3.11 or higher
-- Docker Desktop (for PostgreSQL)
 - PowerShell (Windows)
 
 ### Setup Instructions
@@ -27,32 +26,18 @@ This pipeline:
    .\setup.ps1
    ```
 
-2. **Configure environment:**
-   - Update `.env` file with your database credentials
-   - Download ChromeDriver and update `CHROMEDRIVER_PATH` in `.env`
-
-3. **Start database:**
+2. **Create database tables:**
    ```powershell
-   .\start_database.ps1
-   ```
-   
-   **If Docker is not installed:**
-   - **Option A**: Install Docker Desktop from https://www.docker.com/products/docker-desktop/
-   - **Option B**: Install PostgreSQL locally and update `.env` with your connection string
-
-4. **Initialize database:**
-   ```powershell
-   .\.venv\Scripts\Activate.ps1
    python db/create_tables.py
    ```
 
-5. **Load time standards:**
+3. **Load time standards:**
    ```powershell
    python etl/extract_standards.py
    python etl/standards_loader.py
    ```
 
-6. **Run the pipeline:**
+4. **Run the pipeline:**
    ```powershell
    .\automation\run_pipeline.ps1
    ```
@@ -76,7 +61,7 @@ This pipeline:
 ## Configuration
 
 Key settings in `.env`:
-- `DATABASE_URL`: PostgreSQL connection string
+- `DATABASE_URL`: SQLite database file path (default: sqlite:///data/tri_talent.db)
 - `CHROMEDRIVER_PATH`: Path to ChromeDriver executable  
 - `SCRAPE_DELAY`: Seconds between requests (default: 2)
 - `YEARS_TO_SCRAPE`: Historical data range (default: 5)

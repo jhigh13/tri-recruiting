@@ -2,7 +2,7 @@
 Database connection management for the USA Triathlon Talent ID Pipeline.
 
 This module provides database connection utilities using SQLAlchemy
-with PostgreSQL, including connection pooling and session management.
+with SQLite, including session management.
 """
 
 import os
@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Database configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://tri_user:tri_password@localhost:5432/tri_talent_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/tri_talent.db")
 
 # Connection pool configuration
 POOL_SIZE = 10
@@ -27,20 +27,16 @@ POOL_TIMEOUT = 30
 
 def create_db_engine() -> Engine:
     """
-    Create a SQLAlchemy engine with connection pooling.
+    Create a SQLAlchemy engine for SQLite.
     
     Returns:
         Engine: Configured SQLAlchemy engine
     """
     engine = create_engine(
         DATABASE_URL,
-        poolclass=QueuePool,
-        pool_size=POOL_SIZE,
-        max_overflow=MAX_OVERFLOW,
-        pool_timeout=POOL_TIMEOUT,
-        pool_pre_ping=True,  # Verify connections before use
         echo=False  # Set to True for SQL query logging
     )
+    return engine
     return engine
 
 
@@ -81,6 +77,9 @@ def get_db_session() -> Session:
     SessionFactory = get_session_factory()
     return SessionFactory()
 
+# Alias for consistency with existing code
+get_session = get_db_session
+
 
 # Global engine instance (created lazily)
 _engine: Optional[Engine] = None
@@ -93,6 +92,7 @@ def get_engine() -> Engine:
     Returns:
         Engine: Global SQLAlchemy engine
     """
+    print("DATABASE_URL:", DATABASE_URL)
     global _engine
     if _engine is None:
         _engine = create_db_engine()
