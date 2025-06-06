@@ -33,8 +33,12 @@ This pipeline:
 
 3. **Start database:**
    ```powershell
-   docker compose -f docker/postgres-compose.yml up -d
+   .\start_database.ps1
    ```
+   
+   **If Docker is not installed:**
+   - **Option A**: Install Docker Desktop from https://www.docker.com/products/docker-desktop/
+   - **Option B**: Install PostgreSQL locally and update `.env` with your connection string
 
 4. **Initialize database:**
    ```powershell

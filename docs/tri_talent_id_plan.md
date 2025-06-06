@@ -1,5 +1,5 @@
 ````markdown
-# Implementation Plan f-  - [x] **Step 1: Repository & Environment Setup** **Files** (4)
+# Implementation Plan f-  - [x] **Step 1: - [x] **Step 2: Database Schema & Connection Layer**epository & Environment Setup** **Files** (4)
     - `README.md`: Update with add environment setup instructions.
     - `requirements.txt`: pin `python >=3.11`, `pandas`, `sqlalchemy`, `requests`, `beautifulsoup4`, `rapidfuzz`, `openpyxl`, `selenium`, `python-dotenv`, `pdfplumber`.
     - `.pre-commit-config.yaml`: enable black, isort, flake8.
