@@ -22,7 +22,7 @@ This document outlines the detailed technical specification for automating the U
   * `SQLAlchemy`
 * **Database**:
 
-  * PostgreSQL
+  * SQLite
 * **Fuzzy Matching**:
 
   * `rapidfuzz`
@@ -40,7 +40,7 @@ This document outlines the detailed technical specification for automating the U
 
 ## 2. Database Schema Creation
 
-Use `SQLAlchemy` with declarative syntax for Python ORM interaction with PostgreSQL.
+Use `SQLAlchemy` with declarative syntax for Python ORM interaction with SQLite.
 
 Tables:
 

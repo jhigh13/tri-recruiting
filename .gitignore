@@ -1,2 +1,6 @@
 .venv/
 .env
+data/tri_talent.db
+data/*.db
+logs/
+*.log

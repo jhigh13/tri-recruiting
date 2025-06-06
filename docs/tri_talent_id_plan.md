@@ -1,5 +1,20 @@
 ````markdown
-# Implementation Plan f-  - [x] **Step 1: - [x] **Step 2: Database Schema & Connection Layer**epository & Environment Setup** **Files** (4)
+# Implementation Plan f-  - [x] **Step 1: - [x] **Step 2: Da- [ ] **Step 3: Load Time Standards Seed Data**
+  - **Task**: Convert attached PDF/CSV to `time_standards.csv`; write loader script.
+  - **Files** (2)
+    - `etl/standards_loader.py`: read CSV → insert rows.
+    - `data/time_standards.csv`: curated cutoff list (manual entry).
+  - **Dependencies**: pandas.
+  - **User Action** ➜ verify values in CSV match USA Triathlon sheet before first import.
+  - **Accessibility Note**: include plain‑text column for colour label, not just colour hex, for screen readers.chema & Connection Layer**
+  - **Task**: Define ORM models, create migration script, set up local SQLite database.
+  - **Files** (3)
+    - `db/models.py`: ORM classes for `Runner`, `Swimmer`, `TimeStandard`, `RunnerSwimmerMatch`, `Classification`.
+    - `db/create_tables.py`: script that calls `Base.metadata.create_all(engine)`.
+    - `db/db_connection.py`: database connection utilities for SQLite.
+  - **Dependencies**: SQLAlchemy.
+  - **User Action** ➜ run `python db/create_tables.py` to create `data/tri_talent.db`.
+  - **Accessibility Note**: SQLite database file stored locally in `data/` directory.tep 2: Database Schema & Connection Layer**epository & Environment Setup** **Files** (4)
     - `README.md`: Update with add environment setup instructions.
     - `requirements.txt`: pin `python >=3.11`, `pandas`, `sqlalchemy`, `requests`, `beautifulsoup4`, `rapidfuzz`, `openpyxl`, `selenium`, `python-dotenv`, `pdfplumber`.
     - `.pre-commit-config.yaml`: enable black, isort, flake8.
@@ -190,8 +205,7 @@
   - **Files** (2)
     - `.github/workflows/ci.yml`: installs deps, runs pytest.
     - `docs/USAGE.md`: guide for non‑technical staff.
-  - **Dependencies**: GitHub Actions.
-  - **User Action** ➜ set repository secrets for DB credentials if CI uses an ephemeral Postgres.
+  - **Dependencies**: GitHub Actions.  - **User Action** ➜ ensure SQLite database file is excluded from repository via `.gitignore`.
   - **Accessibility Note**: write `USAGE.md` with step‑by‑step and screenshots; include alt‑text on images.
 
 # Do not implement step 15, inclusion of AI Agenet until I explicitly say so. This is will only be necessary if the performance of our code needs aid. 

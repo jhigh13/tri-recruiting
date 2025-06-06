@@ -21,10 +21,11 @@ Database Design Notes:
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
+import os
 
 from sqlalchemy import (
     ARRAY, Column, DateTime, ForeignKey, Integer, String, Text, DECIMAL, 
-    Index, UniqueConstraint, CheckConstraint, Boolean
+    Index, UniqueConstraint, CheckConstraint, Boolean, JSON
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -32,6 +33,23 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 Base = declarative_base()
+
+# Database-agnostic JSON type
+def get_json_type():
+    """Return appropriate JSON type based on database URL."""
+    database_url = os.getenv("DATABASE_URL", "sqlite:///data/tri_talent.db")
+    if database_url.startswith("postgresql"):
+        return JSONB
+    else:
+        return JSON
+
+def get_array_type():
+    """Return appropriate array type based on database URL."""
+    database_url = os.getenv("DATABASE_URL", "sqlite:///data/tri_talent.db")
+    if database_url.startswith("postgresql"):
+        return ARRAY(String)
+    else:
+        return JSON  # Store arrays as JSON in SQLite
 
 
 class Runner(Base):
@@ -63,7 +81,7 @@ class Runner(Base):
     
     # Metadata
     scrape_timestamp = Column(DateTime, nullable=False, default=func.now())
-    raw_data = Column(JSONB)  # Store original scraped HTML/data for debugging
+    raw_data = Column(get_json_type())  # Store original scraped HTML/data for debugging
     
     # Relationships
     matches = relationship("RunnerSwimmerMatch", back_populates="runner")
@@ -105,12 +123,12 @@ class Swimmer(Base):
     
     # Swimming performance data (stored as JSONB for flexibility)
     # Format: {"200_Free_LCM": 120.45, "400_Free_LCM": 250.12, ...}
-    best_times = Column(JSONB)
+    best_times = Column(get_json_type())
     
     # Metadata
     scrape_timestamp = Column(DateTime, nullable=False, default=func.now())
     swimcloud_url = Column(String(500))  # Original profile URL
-    raw_swim_json = Column(JSONB)  # Full scraped profile data
+    raw_swim_json = Column(get_json_type())  # Full scraped profile data
     
     # Relationships
     matches = relationship("RunnerSwimmerMatch", back_populates="swimmer")
@@ -191,7 +209,7 @@ class RunnerSwimmerMatch(Base):
     school_bonus = Column(DECIMAL(5, 2))
     
     # Match details for audit trail
-    matched_on_fields = Column(ARRAY(String))  # ['name', 'hometown', 'birth_year']
+    matched_on_fields = Column(get_array_type())  # ['name', 'hometown', 'birth_year']
     match_explanation = Column(Text)  # Human-readable explanation of match
     
     # Review workflow
