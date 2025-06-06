@@ -71,12 +71,12 @@ def main():
         missing_colors = session.query(TimeStandard).filter(
             TimeStandard.color_code.is_(None)
         ).count()
-        
-        if missing_colors == 0:
+          if missing_colors == 0:
             print("✓ All records have color codes assigned")
         else:
             print(f"⚠ {missing_colors} records missing color codes")
-          # Check for invalid times (should all be positive)
+        
+        # Check for invalid times (should all be positive)
         invalid_times = session.query(TimeStandard).filter(
             TimeStandard.cutoff_seconds <= 0
         ).count()

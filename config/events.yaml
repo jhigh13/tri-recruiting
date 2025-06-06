@@ -1,0 +1,101 @@
+# TFRRS Event Configuration
+# Maps NCAA Division I track events to TFRRS URLs and parsing details
+
+# TFRRS Base URL and List IDs
+base_url: "https://tf.tfrrs.org"
+list_id_outdoor: "5018"  # NCAA Division I Outdoor Qualifying List
+list_id_indoor: "4987"   # NCAA Division I Indoor Qualifying List
+
+# Event configurations for outdoor season
+outdoor_events:
+  800m:
+    event_id: "12"  # #event12 in TFRRS URLs
+    display_name: "800m_outdoor"
+    min_time_seconds: 100    # Filter out obviously bad times
+    max_time_seconds: 200    # 3:20 is reasonable upper bound
+    
+  1500m:
+    event_id: "15"  # #event15 in TFRRS URLs
+    display_name: "1500m_outdoor"
+    min_time_seconds: 200
+    max_time_seconds: 350
+    
+  3000m_sc:
+    event_id: "18"  # 3000m Steeplechase
+    display_name: "3000m_SC_outdoor"
+    min_time_seconds: 500
+    max_time_seconds: 700
+    
+  5000m:
+    event_id: "20"
+    display_name: "5000m_outdoor"
+    min_time_seconds: 800
+    max_time_seconds: 1100
+    
+  10000m:
+    event_id: "21"
+    display_name: "10000m_outdoor"
+    min_time_seconds: 1600
+    max_time_seconds: 2200
+
+# Event configurations for indoor season
+indoor_events:
+  800m:
+    event_id: "12"
+    display_name: "800m_indoor"
+    min_time_seconds: 100
+    max_time_seconds: 200
+    
+  mile:
+    event_id: "16"  # Mile indoors
+    display_name: "Mile_indoor"
+    min_time_seconds: 220
+    max_time_seconds: 300
+    
+  3000m:
+    event_id: "19"  # 3000m (not steeplechase indoors)
+    display_name: "3000m_indoor"
+    min_time_seconds: 450
+    max_time_seconds: 650
+    
+  5000m:
+    event_id: "20"
+    display_name: "5000m_indoor"
+    min_time_seconds: 800
+    max_time_seconds: 1100
+
+# URL patterns for constructing TFRRS requests
+url_patterns:
+  outdoor: "{base_url}/lists/{list_id}/{year}_NCAA_Division_I_Outdoor_Qualifying_List#event{event_id}"
+  indoor: "{base_url}/lists/{list_id}/{year}_NCAA_Division_I_Indoor_Qualifying_List#event{event_id}"
+
+# Scraping configuration
+scraping:
+  max_athletes_per_event: 500
+  request_delay_seconds: 2
+  max_retries: 3
+  timeout_seconds: 30
+  
+# CSS selectors for parsing TFRRS HTML
+selectors:
+  results_table: "table.tablesaw"
+  result_rows: "tbody tr"
+  rank: "td:nth-child(1)"
+  athlete_name: "td:nth-child(2) a"
+  athlete_link: "td:nth-child(2) a"
+  school: "td:nth-child(3)"
+  performance: "td:nth-child(4)" 
+  year: "td:nth-child(5)"
+  
+# Gender mapping (derived from URL or list context)
+gender_mapping:
+  men: "M"
+  women: "F"
+  
+# Years to scrape (past 5 years from current)
+years_to_scrape:
+  - 2025
+  - 2024
+  - 2023
+  - 2022
+  - 2021
