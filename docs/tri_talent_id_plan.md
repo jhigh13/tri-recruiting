@@ -1,5 +1,5 @@
 ````markdown
-# Implementation Plan f-  - [x] **Step 1: - [x] **Step 2: Da- [ ] **Step 3: Load Time Standards Seed Data**
+# Implementation Plan f-  - [x] **Step 1: - [x] **Step 2: Da- [x] **Step 3: Load Time Standards Seed Data**
   - **Task**: Convert attached PDF/CSV to `time_standards.csv`; write loader script.
   - **Files** (2)
     - `etl/standards_loader.py`: read CSV → insert rows.
@@ -53,40 +53,6 @@
 
 ---
 
-- [ ] **Step 1: Repository & Environment Setup**
-  - **Task**: Create Python virtual environment, install baseline dependencies, configure pre‑commit hooks.
-  - **Files** (4)
-    - `README.md`: Update with add environment setup instructions.
-    - `requirements.txt`: pin `python >=3.11`, `pandas`, `sqlalchemy`, `requests`, `beautifulsoup4`, `rapidfuzz`, `openpyxl`, `selenium`, `python-dotenv`.
-    - `.pre-commit-config.yaml`: enable black, isort, flake8.
-    - `setup.ps1`: **pseudocode** –
-      ```powershell
-      python -m venv .venv
-      .\.venv\Scripts\Activate.ps1
-      pip install -r requirements.txt
-      ```
-  - **Dependencies**: Git, Python 3.11, PowerShell.
-  - **User Action** ➜ run `setup.ps1` and commit initial structure.
-  - **Accessibility Note**: document CLI usage in README with alternative commands for macOS/Linux.
-
-- [ ] **Step 2: Database Schema & Connection Layer**
-  - **Task**: Define ORM models, create migration script, spin up local PostgreSQL container.
-  - **Files** (3)
-    - `db/models.py`: ORM classes for `Runner`, `Swimmer`, `TimeStandard`, `RunnerSwimmerMatch`, `Classification` (**pseudocode only**).
-    - `db/create_tables.py`: script that calls `Base.metadata.create_all(engine)`.
-    - `docker/postgres-compose.yml`: minimal Docker Compose file: Postgres 15, volume mount.
-  - **Dependencies**: Docker Desktop, SQLAlchemy.
-  - **User Action** ➜ run `docker compose up -d` then `python db/create_tables.py`.
-  - **Accessibility Note**: expose env vars for DB creds via `.env` to avoid hard‑coding.
-
-- [ ] **Step 3: Load Time Standards Seed Data**
-  - **Task**: Convert attached PDF/CSV to `time_standards.csv`; write loader script.
-  - **Files** (2)
-    - `etl/standards_loader.py`: read CSV → insert rows.
-    - `data/time_standards.csv`: curated cutoff list (manual entry).
-  - **Dependencies**: pandas.
-  - **User Action** ➜ verify values in CSV match USA Triathlon sheet before first import.
-  - **Accessibility Note**: include plain‑text column for colour label, not just colour hex, for screen readers.
 
 - [ ] **Step 4: TFRRS Scraper Module**
   - **Task**: Fetch top 500 per event/season, normalise times, upsert into `runners`.
