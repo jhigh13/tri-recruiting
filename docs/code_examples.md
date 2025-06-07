@@ -63,18 +63,6 @@ Include the following snippets in your repository to guide GitHub Copilot when w
   </tr>
 </table>
 ```
-
----
-
-## 4. `data/time_standards.csv` (First 3 Lines)
-
-```csv
-gender,event,category,cutoff_seconds,color_label
-M,200_Free_LCM,World_Leading,109.50,Dark_Green
-M,200_Free_LCM,Intl_Ranked,113.00,Green
-M,200_Free_LCM,Nationally_Competitive,116.50,Yellow
-```
-
 ---
 
 ## 5. Docstring in `etl/data_cleaning.py`
