@@ -1,0 +1,14 @@
+https://www.tfrrs.org/lists/5018/2025_NCAA_Division_I_Outdoor_Qualifying_List
+https://tf.tfrrs.org/lists/4867/2024_2025_NCAA_Division_I_Indoor_List_FINAL
+https://www.tfrrs.org/lists/4515/2024_NCAA_Division_I_Rankings_FINAL
+https://www.tfrrs.org/lists/4364/2023_2024_NCAA_Div_I_Indoor_Qualifying_FINAL
+https://tf.tfrrs.org/lists/4044/2023_NCAA_Division_I_All_Schools_Rankings
+https://tf.tfrrs.org/lists/3901/2022_2023_NCAA_Div_I_Indoor_Qualifying_FINAL
+https://www.tfrrs.org/lists/3711/2022_NCAA_Division_I_Outdoor_Qualifying_FINAL
+https://tf.tfrrs.org/lists/3492/2021_2022_NCAA_Div_I_Indoor_Qualifying_FINAL
+https://tf.tfrrs.org/lists/3191/2021_NCAA_Division_I_Outdoor_Qualifying_FINAL
+https://tf.tfrrs.org/lists/3157/2020_2021_NCAA_Div_I_Indoor_Qualifying_FINAL
+https://www.tfrrs.org/lists/2909/2020_NCAA_Division_I_Outdoor_Qualifying
+https://m.tfrrs.org/lists/2770/2019_2020_NCAA_Div_I_Indoor_Qualifying_FINAL
+https://m.tfrrs.org/lists/2568/2019_NCAA_Division_I_Outdoor_Qualifying_FINAL
+https://tfrrs.org/lists/2324/2018_2019_NCAA_Div_I_Indoor_Qualifying_FINAL
