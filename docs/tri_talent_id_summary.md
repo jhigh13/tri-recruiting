@@ -1,23 +1,26 @@
 # USA Triathlon Talent ID Pipeline
 
 ## 1. Project Overview
-We want to automate USA Triathlon’s process of identifying incoming college runners (800 m, 1500 m, 5000 m, 10000 m, 3000 m steeplechas e for outdoors; 800 m, mile, 3000 m, 5000 m for indoors) and cross‐reference them against SwimCloud to discover which athletes have a swim background. If a match is found, we will classify each athlete’s swim/run performance against USA Triathlon’s time standards (World Leading, Internationally Ranked, Nationally Competitive, Development Potential) and output a color‐coded Excel or CSV.
+We want to automate USA Triathlon’s process of identifying incoming college runners (800 m, 1500 m, 5000 m, 10000 m, 3000 m steeplechase for outdoors; 800 m, mile, 3000 m, 5000 m for indoors) and cross‐reference them against SwimCloud to discover which athletes have a swim background. If a match is found, we will classify each athlete’s swim/run performance against USA Triathlon’s time standards (World Leading, Internationally Ranked, Nationally Competitive, Development Potential) and output a color‐coded Excel or CSV.
+
+**Change (2025-06-09):** Instead of scraping TFRRS directly, we now manually download and store each TFRRS HTML file in `etl/data/`, then batch process these files into the database. This approach avoids anti-bot issues and ensures we capture all athletes per event. After loading, we clean and normalize the data for analysis.
 
 ## 2. Data Sources
 
 ### 2.1. TFRRS (Track & Field Results Reporting System)
-- **URL pattern**: `https://tf.tfrrs.org/lists/{list_id}/{year}_{division}_{outdoor/indoor}_Qualifying_List#event{event_id}`
+- **Data Source**: Manually saved HTML files from TFRRS, stored in `etl/data/` (one file per event/season)
 - **Events**:  
-  - Outdoor: 800 m (#event12), 1500 m, 3000 m SC, 5000 m, 10000 m  
+  - Outdoor: 800 m, 1500 m, 3000 m steeplechase, 5000 m, 10000 m  
   - Indoor: 800 m, Mile, 3000 m, 5000 m  
-- **Fields to scrape**:  
+- **Fields to extract**:  
   - Athlete name (first, last)  
   - Performance time (e.g., “2:01.23”)  
   - School/Team (e.g., “Stanford University”)  
   - Year (e.g., 2025)  
-  - Gender (inferred from the list or URL)  
+  - Gender (inferred from the HTML context)  
   - Event  
 - **Volume**: Top 500 per event, both men and women, each season (Outdoor & Indoor). Later: consider Div II/III historical data.
+- **Processing**: Batch process all HTML files in `etl/data/` to load athletes into the database.
 
 ### 2.2. SwimCloud (Public Website)
 - **Search URL**: `https://www.swimcloud.com/swimmer/{swimmer_id}/` or search pages  
@@ -178,12 +181,8 @@ At the end of this step, each runner (row in `runners`) will have either:
    - Launch ETL job (e.g., an Airflow DAG, or a simple cron/powershell task).
    - Inputs: Year, Season (Outdoor/Indoor), Division (I only, for now).
 
-2. **Step A: Scrape TFRRS**  
-   - For each event in `[800, 1500, 3000, 5000, 10000]`:  
-     1. Load `https://tf.tfrrs.org/lists/5018/2025_NCAA_Division_I_Outdoor_Qualifying_List#event{X}`  
-     2. Extract top 500 rows:  
-        - `first_name`, `last_name`, `performance_time`, `school`, `year`, `gender`, `event_name`.  
-     3. Normalize and INSERT/UPDATE into `runners` table (delete any existing rows for `(year, event_name)` first).
+2. **Step A: Process TFRRS HTML Files**  
+   - For each HTML file in `etl/data/`, extract all athletes and load into the `runners` table.
 
 3. **Step B: Scrape SwimCloud**  
    - For each row in `runners` where `verification_status` is NULL:  
