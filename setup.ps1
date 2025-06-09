@@ -1,5 +1,8 @@
+###############################################################
 # PowerShell script to set up the development environment
+# Updated for SQLite (no PostgreSQL/Docker required)
 # Run this script to initialize your local development environment
+###############################################################
 
 Write-Host "Setting up USA Triathlon Talent ID Pipeline environment..." -ForegroundColor Green
 
@@ -7,7 +10,6 @@ Write-Host "Setting up USA Triathlon Talent ID Pipeline environment..." -Foregro
 try {
     $pythonVersion = python --version 2>&1
     Write-Host "Found Python: $pythonVersion" -ForegroundColor Yellow
-    
     # Extract version number and check if it's 3.11+
     if ($pythonVersion -match "Python (\d+)\.(\d+)") {
         $major = [int]$matches[1]
@@ -52,8 +54,7 @@ $directories = @(
     "automation",
     "data",
     "tests",
-    "logs",
-    "docker"
+    "logs"
 )
 
 foreach ($dir in $directories) {
@@ -63,7 +64,7 @@ foreach ($dir in $directories) {
     }
 }
 
-# Create .env file with SQLite configuration
+# Create .env file with SQLite configuration (no PostgreSQL)
 if (!(Test-Path ".env")) {
     @"
 # Database Configuration - Using SQLite for local development
@@ -90,6 +91,6 @@ MAX_ATHLETES_PER_EVENT=500
 Write-Host "`nSetup complete! Next steps:" -ForegroundColor Green
 Write-Host "1. Update ChromeDriver path in .env file if needed" -ForegroundColor White
 Write-Host "2. Run database setup: python db/create_tables.py" -ForegroundColor White
-Write-Host "3. Load time standards: python etl/extract_standards.py" -ForegroundColor White
+Write-Host "3. Load time standards: python etl/standards_loader.py" -ForegroundColor White
 Write-Host "`nTo activate the environment in the future, run:" -ForegroundColor Green
 Write-Host ".\.venv\Scripts\Activate.ps1" -ForegroundColor White
