@@ -3,9 +3,9 @@
 # Requires Python 3.11+
 
 # Data handling
-pandas==2.1.4
-sqlalchemy==2.0.30
-psycopg2-binary==2.9.9
+pandas==2.3.0
+sqlalchemy==2.0.34  # upgraded to include Python 3.11 enum bugfix
+psycopg2-binary==2.9.10
 
 # Web scraping
 requests==2.31.0

@@ -170,34 +170,34 @@ def load_standards_from_csv(csv_path: Path) -> List[TimeStandard]:
     Returns:
         List of TimeStandard objects ready for database insertion    """
     standards = []
-      try:
+    try:
         with open(csv_path, 'r', encoding='utf-8-sig') as f:  # utf-8-sig handles BOM
             reader = csv.DictReader(f)
-            
+
             for row_num, row in enumerate(reader, start=2):  # Start at 2 for header
                 # Skip empty rows - check if any non-empty values exist
                 if not any(value.strip() for value in row.values() if value):
                     continue
-                
+
                 category = row['Category'].strip()
                 discipline = row['Discipline'].strip()
                 event = row['Event'].strip()
-                
+
                 # Skip if essential fields are missing
                 if not category or not discipline or not event:
                     continue
-                
+
                 # Extract gender and age group
                 gender = GENDER_MAPPING.get(category)
                 age_group = AGE_GROUP_MAPPING.get(category)
-                
+
                 if not gender or not age_group:
                     print(f"Warning: Unknown category '{category}' on row {row_num}")
                     continue
-                
+
                 # Normalize event name
                 normalized_event = normalize_event_name(event, discipline)
-                
+
                 # Process each performance tier
                 tier_columns = [
                     "World Leading",
@@ -205,17 +205,17 @@ def load_standards_from_csv(csv_path: Path) -> List[TimeStandard]:
                     "Nationally Competitive",
                     "Development Potential"
                 ]
-                
+
                 for tier in tier_columns:
                     time_value = row.get(tier, "").strip()
                     if not time_value:
                         continue
-                    
+
                     cutoff_seconds = parse_time_to_seconds(time_value)
                     if cutoff_seconds is None:
                         print(f"Warning: Could not parse time '{time_value}' for {category} {normalized_event} {tier} on row {row_num}")
                         continue
-                    
+
                     # Create TimeStandard object
                     standard = TimeStandard(
                         gender=gender,
@@ -226,16 +226,16 @@ def load_standards_from_csv(csv_path: Path) -> List[TimeStandard]:
                         color_code=COLOR_MAPPING.get(tier),
                         display_order=len(standards)
                     )
-                    
+
                     standards.append(standard)
-    
+
     except FileNotFoundError:
         print(f"Error: CSV file not found at {csv_path}")
         return []
     except Exception as e:
         print(f"Error reading CSV file: {e}")
         return []
-    
+
     return standards
 
 
