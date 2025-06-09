@@ -13,9 +13,7 @@ This document outlines the detailed technical specification for automating the U
 * **Language**: Python (3.11+)
 * **Web Scraping Libraries**:
 
-  * `requests`
   * `BeautifulSoup`
-  * `Selenium` (for dynamic loading)
 * **Data Handling**:
 
   * `pandas`
@@ -38,7 +36,7 @@ This document outlines the detailed technical specification for automating the U
 
 ---
 
-## 2. Database Schema Creation
+## 2. Database Schema Creation (Completed)
 
 Use `SQLAlchemy` with declarative syntax for Python ORM interaction with SQLite.
 
@@ -54,7 +52,7 @@ Tables:
 
 ## 3. Web Scraping
 
-### 3.1. TFRRS Scraping
+### 3.1. TFRRS HTML Processing (Completed)
 
 * Base URL: `https://tf.tfrrs.org`
 * Events and qualifying pages as defined previously
@@ -81,7 +79,7 @@ Tables:
   * Swim Team
   * Best swim times per event (in seconds)
 
-### 3.3. Time Standards
+### 3.3. Time Standards (Completed)
 
 * Manually compile into CSV and load into database for easy lookup.
 
