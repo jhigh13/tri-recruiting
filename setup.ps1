@@ -92,5 +92,13 @@ Write-Host "`nSetup complete! Next steps:" -ForegroundColor Green
 Write-Host "1. Update ChromeDriver path in .env file if needed" -ForegroundColor White
 Write-Host "2. Run database setup: python db/create_tables.py" -ForegroundColor White
 Write-Host "3. Load time standards: python etl/standards_loader.py" -ForegroundColor White
+
+# NOTE: If using webdriver-manager, you can omit manual Chromedriver setup and use its auto-download in code.
+Write-Host "NOTE: Selenium will auto-manage ChromeDriver via webdriver-manager; no CHROMEDRIVER_PATH required." -ForegroundColor Cyan
+
+Write-Host "`nSetup complete! Next steps:" -ForegroundColor Green
+Write-Host "1. Update ChromeDriver path in .env file if needed" -ForegroundColor White
+Write-Host "2. Run database setup: python db/create_tables.py" -ForegroundColor White
+Write-Host "3. Load time standards: python etl/standards_loader.py" -ForegroundColor White
 Write-Host "`nTo activate the environment in the future, run:" -ForegroundColor Green
 Write-Host ".\.venv\Scripts\Activate.ps1" -ForegroundColor White

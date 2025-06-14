@@ -32,7 +32,12 @@ We want to automate USA Triathlon’s process of identifying incoming college ru
   - List of swim times (LCM and YDS) by event (200 Free, 400/500 Free, 800/1000 Free, 1500/1650 Free)  
 - **Challenges**:  
   - No official public API → use requests+BeautifulSoup or Selenium.  
-  - Name collisions (e.g., multiple “Charles Hicks”) → require fuzzy matching + metadata validation.
+  - Name collisions (e.g., multiple “Charles Hicks”) → require fuzzy matching + metadata validation.  
+- **AI Agent Integration**:  
+  - Leverage an autonomous agent (e.g., via Azure OpenAI) to orchestrate search queries, page fetching, HTML parsing, and match scoring.  
+  - The agent will build search queries using runner first and last names combined with contextual terms (e.g., college, hometown).  
+  - It will use the Bing Search API with additional filtering (region/language options) and support caching of results to reduce repeated API calls.  
+  - The agent handles polite scraping (rate limits, User-Agent, retries) and applies fuzzy‐matching logic (using rapidfuzz) before writing back to the DB.
 
 ### 2.3. USA Triathlon Time Standards
 - **Source**: https://www.usatriathlon.org/our-community/elite-development/talent-id/time-standards  
@@ -184,12 +189,14 @@ At the end of this step, each runner (row in `runners`) will have either:
 2. **Step A: Process TFRRS HTML Files**  
    - For each HTML file in `etl/data/`, extract all athletes and load into the `runners` table.
 
-3. **Step B: Scrape SwimCloud**  
-   - For each row in `runners` where `verification_status` is NULL:  
-     1. Build a search query URL (e.g., `https://www.swimcloud.com/search/?q={runner_full_name}`) or directly attempt known SwimCloud IDs if you have them.  
-     2. Scrape candidate swimmers’ names, hometown, birth_year, swim_team, best swim times.  
-     3. Normalize and INSERT/UPDATE into `swimmers` table (avoiding duplicates by checking if `first_name`, `last_name`, `birth_year`, and `swim_team` already exist).
-
+3. **Step B: AI Agent SwimCloud Matching**  
+   - For each runner where `verification_status` is NULL, the AI agent will:
+     1. Construct search queries (enriched with context) and dispatch asynchronous Bing Search API calls.
+     2. Filter results based on SwimCloud URL patterns.
+     3. Parse candidate pages using HTTP GET and BeautifulSoup.
+     4. If multiple high-scoring matches are found, return the best match for auto-verification or flag for manual review.
+     5. Cache search results to reduce latency on repeated queries.
+     
 4. **Step C: Name-Matching & Validation**  
    - Run the matching algorithm described in Section 2 on all new `(runner, swimmer)` pairs.  
    - Populate `runner_swimmer_match` with `match_score` and a provisional `verification_status`.  
@@ -247,5 +254,7 @@ At the end of this step, each runner (row in `runners`) will have either:
      - Example queries for pulling out “needs review” rows and classification reports.
 
 4. **Implementation Planning**  
-   - We’ll decide whether to containerize the scraper + classifier into a Docker image, or run it locally behind Task Scheduler.  
-   - Design how to store credentials (if you later integrate a Google Custom Search API for “final name verification”), how to back up the database, and how to version‐control the code in GitHub.
+   - Process runners in asynchronous batches for scalability.
+   - Include additional query filtering (e.g., region, language) if needed.
+   - Log detailed debugging information at each pipeline step.
+   - Output manual review CSV with runner_id, match explanations, and all high-scoring candidates (if multiple found) to aid human resolution.

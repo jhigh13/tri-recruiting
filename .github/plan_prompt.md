@@ -22,7 +22,7 @@ THEN:
 - Structure your plan as follows, and output as Markdown code block
 
 ```markdown
-# Implementation Plan for [triathlon_talent_id_detailed_spec.md]
+# Implementation Plan for [ai_agent_spec.md]
 
 - [ ] Step 1: [Brief title]
   - **Task**: [Detailed explanation of what needs to be implemented]
@@ -31,10 +31,7 @@ THEN:
   - **Dependencies**: [Dependencies for step]
 
 [Additional steps...]
-```
-
-- After the steps to implement the pipeline, add a step to build and test the model
-- Add a step to write tests for the feature to test the accuracy of the model 
+``` 
 
 NEXT:
 

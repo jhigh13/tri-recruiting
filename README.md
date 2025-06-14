@@ -5,11 +5,17 @@ Automate the identification of NCAA Division I track athletes with competitive s
 ## Overview
 
 This pipeline:
-1. Scrapes top NCAA Division I track athletes from TFRRS (past 5 years)
-2. Cross-references with SwimCloud to find swimming histories  
-3. Matches athletes using fuzzy logic algorithms
-4. Classifies performance against USA Triathlon time standards
-5. Generates Excel reports with color-coded classifications
+1. Extract distance running performances from TFRRS HTML (etl/scrape_tfrrs.py, tfrrs_html_processor_new.py).  
+2. Clean & normalize runner data (etl/data_cleaning.py).  
+3. Load USA Triathlon standards and classify performances (etl/standards_loader.py, etl/classifier.py).  
+4. **AI Agent SwimCloud Matching**  
+   - For each runner, invoke an AI agent that:  
+     • Searches SwimCloud for possible profiles  
+     • Extracts profile info via headless Selenium or HTML parsing  
+     • Computes a match score and auto‐verifies or flags for review  
+   - Stores match metadata back into the database.  
+5. Generate reports (reports/report_generator.py) and export to CSV/Excel with accessibility labels.  
+6. Automate entire flow via PowerShell wrapper (automation/run_pipeline.ps1).
 
 ## Quick Start
 
@@ -46,7 +52,7 @@ This pipeline:
 
 ```
 ├── etl/                    # Data extraction and processing
-│   ├── scrape_tfrrs.py    # TFRRS scraper  
+│   ├── tfrrs_html_processor.py    # TFRRS html processor  
 │   ├── scrape_swimcloud.py # SwimCloud scraper
 │   ├── matcher.py         # Fuzzy matching logic
 │   └── classifier.py      # Performance classification
@@ -103,4 +109,24 @@ isort .
 ## License
 
 [License information]
-automate USA Triathlon recruitment process. 
+automate USA Triathlon recruitment process.
+
+## Data Model
+
+### Runner (db/models.py)
+| Column                   | Type       | Description                                        |
+|--------------------------|------------|----------------------------------------------------|
+| id                       | Integer PK | Unique runner ID                                   |
+| first_name               | String     | Lowercased first name                              |
+| last_name                | String     | Lowercased last name                               |
+| college_team             | String     | School name                                        |
+| event                    | String     | Normalized event (e.g. “5000m”)                    |
+| performance_time         | Decimal    | Seconds (with two decimals)                        |
+| year                     | Integer    | Year scraped                                       |
+| gender                   | Char(1)    | “M” or “F”                                         |
+| **swimcloud_profile_url**       | String     | URL of matched SwimCloud profile (nullable)        |
+| **swimcloud_match_score**       | Integer    | 0–100 score from rapidfuzz + bonuses               |
+| **swim_background_flag**        | Boolean    | True if auto_verified ≥ MATCH_THRESHOLD            |
+| **swimcloud_raw_data**          | JSON       | Raw extracted SwimCloud fields (e.g. best times)   |
+| scrape_timestamp         | DateTime   | When TFRRS data was scraped                        |
+| swimcloud_search_timestamp | DateTime | When SwimCloud lookup was performed                |
