@@ -50,7 +50,7 @@ Tables:
 
 ---
 
-## 3. Web Scraping
+## 3. Runner Processing and Cleaning 
 
 ### 3.1. TFRRS HTML Processing (Completed)
 
@@ -66,18 +66,8 @@ Tables:
   * Year
   * Gender
   * Event
-
-### 3.2. SwimCloud Scraping
-
-* URL: Search via `https://www.swimcloud.com/search/?q={name}`
-* Scrape matching swimmer profiles
-* Extract:
-
-  * Name
-  * Hometown
-  * Birth Year (if available)
-  * Swim Team
-  * Best swim times per event (in seconds)
+* Hometown (if available)
+* Birth Year (if available)
 
 ### 3.3. Time Standards (Completed)
 
@@ -85,13 +75,16 @@ Tables:
 
 ---
 
-## 4. Data Cleaning and Normalization
+## 4. Data Cleaning and Normalization (Completed)
 
 * Normalize athlete names (lowercase, remove punctuation/suffixes)
 * Standardize hometown/school naming
 * Store raw data snapshots as backup in JSONB columns (optional but recommended)
 
 ---
+
+
+## 5. Ai Agent for Search, Fetching, and Verification of a Runner's Swim Background
 
 ## 5. Matching Logic (Fuzzy Matching)
 
@@ -175,8 +168,7 @@ project-root/
 
 ## 12. Next Steps
 
-* Implement the initial database schema with SQLAlchemy.
-* Begin coding scraping modules.
+* Begin coding AI Agent.
 * Set up fuzzy matching and validation logic.
 * Integrate AI components if necessary for ambiguous verification.
 
