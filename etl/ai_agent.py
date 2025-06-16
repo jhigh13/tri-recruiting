@@ -25,14 +25,18 @@ from db.models import Runner, Swimmer, RunnerSwimmerMatch
 from sqlalchemy.exc import SQLAlchemyError
 
 # HTTP client and environment variable loading
-import aiohttp
 from dotenv import load_dotenv
+from azure.identity import DefaultAzureCredential
+from azure.ai.agents import AgentsClient
 
 # Load environment variables
 load_dotenv()
 
-BING_SEARCH_ENDPOINT = 'https://api.bing.microsoft.com/v7.0/search'
-BING_SUBSCRIPTION_KEY = os.getenv('BING_SEARCH_KEY')
+AZURE_AGENT_ENDPOINT = os.getenv('AZURE_PROJECT_ENDPOINT')
+AZURE_AGENT_ID = os.getenv('AZURE_AGENT_ID')
+if not AZURE_AGENT_ENDPOINT or not AZURE_AGENT_ID:
+    logging.error("AZURE_AGENT_ENDPOINT and AZURE_AGENT_ID must be set in environment.")
+    raise RuntimeError("Azure AI Foundry Agent configuration missing.")
 CACHE_FILE = 'search_cache.db'
 
 
@@ -78,31 +82,25 @@ def build_search_query(runner: Dict) -> str:
     return ' '.join(parts)
 
 
-# Ensure Bing API key is set
-if not BING_SUBSCRIPTION_KEY:
-    logging.error("BING_SEARCH_KEY environment variable is not set.")
-    raise RuntimeError("Environment variable BING_SEARCH_KEY is required for Bing Search API.")
-
 async def bing_search_async(query: str) -> list[dict]:
-    """Perform an asynchronous Bing search and return top web results with caching."""
+    """Perform an asynchronous search via Azure AI Foundry Agent and return results with caching."""
     if query in SEARCH_CACHE:
         return SEARCH_CACHE[query]
-    # Prepare headers, filtering out None values
-    raw_headers = {
-        'Ocp-Apim-Subscription-Key': BING_SUBSCRIPTION_KEY,
-        'User-Agent': os.getenv('USER_AGENT', 'AI-Agent')
-    }
-    headers = {str(k): str(v) for k, v in raw_headers.items() if v is not None}
-    params = {'q': query, 'count': 10}
-    async with aiohttp.ClientSession() as session:
-        async with session.get(BING_SEARCH_ENDPOINT, headers=headers, params=params) as resp:
-            resp.raise_for_status()
-            data = await resp.json()
-    results = []
-    for item in data.get('webPages', {}).get('value', []):
-        results.append({'name': item.get('name'), 'url': item.get('url')})
+    # Use Azure AI Foundry Agent SDK in executor
+    def sync_agent_search() -> list[dict]:
+        credential = DefaultAzureCredential()
+        client = AgentsClient(
+            endpoint=AZURE_AGENT_ENDPOINT,
+            credential=credential
+        )
+        # The request to the agent should include our query
+        response = client.invoke(agent_id=AZURE_AGENT_ID, request=query)
+        items = response.get('results', []) if isinstance(response, dict) else []
+        return [{'name': item.get('name'), 'url': item.get('url')} for item in items]
 
-    # Update in-memory cache and persist to disk
+    loop = asyncio.get_running_loop()
+    results = await loop.run_in_executor(None, sync_agent_search)
+    # Cache and persist
     SEARCH_CACHE[query] = results
     try:
         with shelve.open(CACHE_FILE) as shelf:
