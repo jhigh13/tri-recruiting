@@ -81,6 +81,10 @@ MAX_RETRIES=3
 # Optional: AI Integration (for future use)
 OPENAI_API_KEY=your_openai_api_key_here
 
+# Azure AI Foundry Agent configuration
+AZURE_AGENT_ENDPOINT=https://<your-resource>.cognitiveservices.azure.com
+AZURE_AGENT_ID=<your-agent-id>
+
 # Pipeline Configuration
 YEARS_TO_SCRAPE=5
 MAX_ATHLETES_PER_EVENT=500

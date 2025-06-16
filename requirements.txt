@@ -13,6 +13,14 @@ beautifulsoup4==4.12.2
 selenium==4.26.1
 webdriver-manager==3.8.5
 
+# Azure Web Search SDK
+azure-cognitiveservices-search-websearch==2.0.0
+msrest==0.7.1
+
+# Azure AI Foundry Agent SDK and authentication
+azure-identity==1.14.1
+azure-ai-agents==0.1.0
+
 # Fuzzy matching
 rapidfuzz==3.5.2
 
