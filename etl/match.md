@@ -7,11 +7,11 @@ The following rules are used to determine if a runner and a SwimCloud profile ar
 - **Name Match**: +60 points
   - If all words in the runner's name (first and last) appear in the candidate's name (case-insensitive, partial matches allowed).
 - **Hometown Match**:
-  - +20 points if the runner's hometown exactly matches the candidate's hometown (case-insensitive).
+  - +20 points if the runner's hometown closely matches the candidate's hometown (case-insensitive).
   - +10 points if either the city or state from the runner's hometown appears in the candidate's hometown.
-- **High School Match**: +10 points
+- **High School Match**: +15 points
   - If the runner's high school appears in the candidate's high school field (case-insensitive).
-- **Swimming Bio/News Keyword**: +10 points
+- **Swimming Bio/News Keyword**: +5 points
   - If the candidate's bio or news contains any of these keywords: 'swim', 'swimming', 'freestyle', 'backstroke', 'breaststroke', 'butterfly', 'IM'.
 
 ## Decision Threshold
@@ -25,7 +25,7 @@ If a runner named "Christian Jackson" from "Stafford, VA" with high school "Colo
 - If the name matches, +60
 - If hometown matches exactly, +20
 - If high school matches, +10
-- If bio mentions "swimming", +10
+- If bio mentions "swimming", +5
 - **Total: 100 → Swimming Match**
 
 If only the name matches, **Total: 60 → No Match**

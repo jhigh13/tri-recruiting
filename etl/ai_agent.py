@@ -1,101 +1,155 @@
 import os
+import sys
+import json
+from pathlib import Path
+from db.db_connection import get_db_session
+from db.models import Runner
+
+from typing import List, Any
+
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
-from azure.ai.agents.models import FilePurpose 
-from azure.ai.agents.models import BingGroundingTool
-from azure.ai.agents.models import FileSearchTool
+from azure.ai.agents.models import (
+    BingGroundingTool,
+    FilePurpose,
+    FileSearchTool,
+    FunctionTool,
+    ToolSet,
+)
+
+sys.path.append(str(Path(__file__).parent.parent))
 
 # Create an Azure AI Client from an endpoint, copied from your Azure AI Foundry project.
-# You need to login to Azure subscription via Azure CLI and set the environment variables
 project_endpoint = os.environ["PROJECT_ENDPOINT"]  # Ensure the PROJECT_ENDPOINT environment variable is set
-conn_id = os.environ["BING_CONNECTION_NAME"]
 
 # Create an AIProjectClient instance
 project_client = AIProjectClient(
     endpoint=project_endpoint,
     credential=DefaultAzureCredential(),  # Use Azure Default Credential for authentication
-    api_version="latest",
+    #api_version="latest",
 )
 
 
-bing = BingGroundingTool(connection_id=conn_id)
+def use_agent(runner_id: id) -> str:
+    agent = project_client.agents.get_agent("asst_yGc1n6WeUULxruHX3TCbG61U")
 
-file_path = "C:\Users\jhigh\Projects\tri-recruiting\etl\match.md"
-file = project_client.agents.files.upload_and_poll(file_path=file_path, purpose=FilePurpose.AGENTS)
-print(f"Uploaded file, file ID: {file.id}")
-
-vector_store = project_client.agents.create_vector_store_and_poll(file_ids=[file.id], name="my_vectorstore")
-print(f"Created vector store, vector store ID: {vector_store.id}")
-
-file_search = FileSearchTool(vector_store_ids=[vector_store.id])
-
-with project_client:
-    # Create an agent with the Bing Grounding tool
-    agent = project_client.agents.create_agent(
-        model=os.environ["MODEL_DEPLOYMENT_NAME"],  # Model deployment name
-        name="ValidateSwimBackground",  # Name of the agent
-        instructions=
-        
-        '''Determine if a given NCAA runner has a previous swimming background.
-            Given a runner’s profile: first name, last name, college team. Build a query: 'name' + 'college team' + 'track and field'. Find runner's college profile.
-
-            Then create the query: 'name' + 'hometown' + 'SwimCloud'.
-            Search for possible matches on SwimCloud, a public swimming results website.
-
-            For each SwimCloud profile you find use the match.md file to calculate a runner's score for a swim background. Do not use your own scoring criteria. 
-
-            Example Input: Christian Jackson, Virginia Tech
-
-            Name:Christian Jackson
-            College: Virginia Tech
-            Class: Junior
-            High School: Colonial Forge
-            Hometown: Stafford, VA
-            Swimmer: No
-            Score: 60
-            Match Confidence: High
-
-            Example Input: Chase Atkins, Bellarmine
-
-            Chase Atkins
-            College: Bellarmine University
-            Class: Redshirt Junior
-            High School: Hopkinsville High School 
-            Hometown: Hopkinsville, KY
-            Swimmer: Yes
-            Score: 100
-            Match Confidence: High
-            ''',
-        tools=[file_search.definitions, bing.definitions],
-        tool_resources =   # Attach the tool
-    )
-    print(f"Created agent, ID: {agent.id}")
-
-    # Create a thread for communication
+    # Create a new thread for the agent interaction
     thread = project_client.agents.threads.create()
-    print(f"Created thread, ID: {thread.id}")
-    
-    # Add a message to the thread
+
+    session = get_db_session()
+    runner = session.query(Runner).filter(Runner.runner_id == runner_id).first()
+    runner_info = f"{runner.first_name} {runner.last_name}, College: {runner.college_team}"
+
+    # Create a user message with the runner information
     message = project_client.agents.messages.create(
         thread_id=thread.id,
-        role="user",  # Role of the message sender
-        content="Jett Knight, Air Force",  # Message content
+        role="user",
+        content=runner_info,
     )
-    print(f"Created message, ID: {message['id']}")
     
-    # Create and process an agent run
+    # Run the agent with the created thread
     run = project_client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
-    print(f"Run finished with status: {run.status}")
-    
-    # Check if the run failed
+
+    # Check if the run was successful
     if run.status == "failed":
-        print(f"Run failed: {run.last_error}")
+        return f"Run failed: {run.last_error}"
     
-    # Fetch and log all messages
+    # Fetch and return the assistant's response
     messages = project_client.agents.messages.list(thread_id=thread.id)
     for message in messages:
-        print(f"Role: {message.role}, Content: {message.content}")
+        if message.role == "assistant":
+            return message.content
     
-    # Delete the agent when done
-    project_client.agents.delete_agent(agent.id)
-    print("Deleted agent")
+    return "No assistant response found."
+
+def get_next_runner_id() -> int:
+    """
+    Fetch the next runner from the database that needs AI processing.
+    
+    This function should connect to your database and retrieve a runner
+    that has not yet been processed by the AI agent.
+    
+    Returns:
+        str: A string containing the runner's information.
+    """
+    session = get_db_session()
+    runner = session.query(Runner).filter(Runner.swimmer == None).first()
+    if runner:
+        return runner.runner_id
+    return -1
+
+def build_user_query(runner_id: int) -> str:
+    """
+    Build a user query string for the AI agent based on the runner's information.
+
+    Args:
+        runner_id (int): The ID of the runner.
+
+    Returns:
+        str: A formatted string containing the runner's information.
+    """
+    session = get_db_session()
+    runner = session.query(Runner).filter(Runner.id == runner_id).first()
+    if runner:
+        return f"{runner.first_name} {runner.last_name}, College: {runner.college_team}"
+    return "Runner not found."
+
+def update_runner_with_agent_output(runner_id: int, agent_output: dict) -> None:
+    """
+    Update the runner's record in the database with AI agent output.
+
+    Args:
+        agent_output (dict): Dictionary with keys: name, college, class, high_school, hometown, swimmer, score, match_confidence.
+    """
+    session = get_db_session()
+    try:
+        # Find the runner by id
+        runner = session.query(Runner).filter(
+            Runner.runner_id == runner_id,
+        ).first()
+        if not runner:
+            print(f"No runner found for ID {runner_id}")
+            return
+        runner.high_school = agent_output.get("high_school")
+        runner.hometown = agent_output.get("hometown")
+        runner.swimmer = agent_output.get("swimmer")
+        runner.score = agent_output.get("score")
+        runner.match_confidence = agent_output.get("match_confidence")
+        runner.class_year = agent_output.get("class")
+        session.commit()
+        print(f"Runner {runner.id} updated with agent output.")
+    except Exception as e:
+        session.rollback()
+        print(f"Error updating runner: {e}")
+    finally:
+        session.close()
+        
+def parse_agent_response(response):
+    """
+    Extract and parse the agent's JSON output from the response list.
+    """
+    if isinstance(response, list) and response:
+        msg = response[0]
+        json_str = msg.get('text', {}).get('value', None)
+        if json_str:
+            return json.loads(json_str)
+    return None
+
+def main():
+    next_runner = get_next_runner_id()
+    if next_runner != -1:
+
+        print(f"Processing runner: {next_runner}")
+        response = use_agent(next_runner)
+        response = json.loads(response)
+        agent_output = parse_agent_response(response)
+        if agent_output:
+            update_runner_with_agent_output(next_runner, agent_output)
+            print(f"AI Agent Response: {agent_output}")
+        else:
+            print("Could not parse agent output.")
+    else:
+        print("No runners to process.")
+
+if __name__ == "__main__":
+    main()
