@@ -370,6 +370,7 @@ def store_athletes(athletes: List[Dict]) -> None:
                     year=data['year_scraped'],
                     gender=data['gender'],
                     birth_year=None,
+                    class_year=data.get('class_year', None),  # Store class_year in top-level column
                     scrape_timestamp=data['scrape_timestamp'],
                     raw_data={
                         'raw_performance': data['raw_performance'],

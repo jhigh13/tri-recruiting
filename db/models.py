@@ -6,9 +6,7 @@ All models include proper relationships, indexes, and constraints.
 
 Entity Relationship Overview:
 - Runner: NCAA track athletes scraped from TFRRS
-- Swimmer: Athletes with swimming background from SwimCloud  
 - TimeStandard: USA Triathlon performance benchmarks
-- RunnerSwimmerMatch: Links runners to potential swimmer matches with scoring
 - Classification: Performance classification results against standards
 
 Database Design Notes:
@@ -79,12 +77,16 @@ class Runner(Base):
     hometown = Column(String(200))
     birth_year = Column(Integer)
     
+    # New fields for AI agent output
+    high_school = Column(String(200))
+    class_year = Column(String(50))  # e.g., "Senior", "Junior"
+    swimmer = Column(String(10))  # "Yes" or "No"
+    score = Column(Integer)  # 0-100
+    match_confidence = Column(String(20))  # "Low", "Medium", "High"
+    
     # Metadata
     scrape_timestamp = Column(DateTime, nullable=False, default=func.now())
     raw_data = Column(get_json_type())  # Store original scraped HTML/data for debugging
-    
-    # Relationships
-    matches = relationship("RunnerSwimmerMatch", back_populates="runner")
     
     # Constraints
     __table_args__ = (
@@ -98,51 +100,6 @@ class Runner(Base):
     
     def __repr__(self) -> str:
         return f"<Runner(id={self.runner_id}, name='{self.first_name} {self.last_name}', event='{self.event}')>"
-
-
-class Swimmer(Base):
-    """
-    Athletes with swimming background scraped from SwimCloud.
-    
-    Stores swimmer profiles and best times for matching against runners.
-    Multiple time entries stored in JSONB for flexibility with different events.
-    """
-    __tablename__ = "swimmers"
-    
-    # Primary key
-    swimmer_id = Column(Integer, primary_key=True, autoincrement=True)
-    
-    # Athlete identification (normalized for matching)
-    first_name = Column(String(100), nullable=False, index=True)
-    last_name = Column(String(100), nullable=False, index=True)
-    
-    # Profile data
-    hometown = Column(String(200))
-    birth_year = Column(Integer)
-    swim_team = Column(String(200))
-    
-    # Swimming performance data (stored as JSONB for flexibility)
-    # Format: {"200_Free_LCM": 120.45, "400_Free_LCM": 250.12, ...}
-    best_times = Column(get_json_type())
-    
-    # Metadata
-    scrape_timestamp = Column(DateTime, nullable=False, default=func.now())
-    swimcloud_url = Column(String(500))  # Original profile URL
-    raw_swim_json = Column(get_json_type())  # Full scraped profile data
-    
-    # Relationships
-    matches = relationship("RunnerSwimmerMatch", back_populates="swimmer")
-    
-    # Constraints
-    __table_args__ = (
-        CheckConstraint("birth_year IS NULL OR (birth_year >= 1990 AND birth_year <= 2010)", name="valid_birth_year"),
-        Index("idx_swimmer_name", "last_name", "first_name"),
-        Index("idx_swimmer_hometown", "hometown"),
-        Index("idx_swimmer_birth_year", "birth_year"),
-    )
-    
-    def __repr__(self) -> str:
-        return f"<Swimmer(id={self.swimmer_id}, name='{self.first_name} {self.last_name}', team='{self.swim_team}')>"
 
 
 class TimeStandard(Base):
@@ -185,61 +142,6 @@ class TimeStandard(Base):
         return f"<TimeStandard(id={self.standard_id}, event='{self.event}', category='{self.category}')>"
 
 
-class RunnerSwimmerMatch(Base):
-    """
-    Potential matches between runners and swimmers with scoring details.
-    
-    Stores fuzzy matching results including similarity scores and field-level
-    match details. Supports manual review workflow with verification status.
-    """
-    __tablename__ = "runner_swimmer_match"
-    
-    # Primary key
-    match_id = Column(Integer, primary_key=True, autoincrement=True)
-    
-    # Foreign keys
-    runner_id = Column(Integer, ForeignKey("runners.runner_id"), nullable=False)
-    swimmer_id = Column(Integer, ForeignKey("swimmers.swimmer_id"), nullable=False)
-    
-    # Matching algorithm results
-    match_score = Column(DECIMAL(5, 2), nullable=False)  # 0.00 to 100.00
-    name_similarity = Column(DECIMAL(5, 2))  # Component scores for debugging
-    hometown_bonus = Column(DECIMAL(5, 2))
-    birth_year_bonus = Column(DECIMAL(5, 2))
-    school_bonus = Column(DECIMAL(5, 2))
-    
-    # Match details for audit trail
-    matched_on_fields = Column(get_array_type())  # ['name', 'hometown', 'birth_year']
-    match_explanation = Column(Text)  # Human-readable explanation of match
-    
-    # Review workflow
-    verification_status = Column(String(20), nullable=False, default="pending")  # "auto_verified", "manual_review", "no_match", "verified", "rejected"
-    reviewer_notes = Column(Text)
-    reviewed_by = Column(String(100))
-    reviewed_at = Column(DateTime)
-    
-    # Metadata
-    match_timestamp = Column(DateTime, nullable=False, default=func.now())
-    
-    # Relationships
-    runner = relationship("Runner", back_populates="matches")
-    swimmer = relationship("Swimmer", back_populates="matches")
-    classifications = relationship("Classification", back_populates="match")
-    
-    # Constraints
-    __table_args__ = (
-        CheckConstraint("match_score >= 0 AND match_score <= 100", name="valid_match_score"),
-        CheckConstraint("verification_status IN ('pending', 'auto_verified', 'manual_review', 'no_match', 'verified', 'rejected')", name="valid_verification_status"),
-        UniqueConstraint("runner_id", "swimmer_id", name="unique_runner_swimmer_pair"),
-        Index("idx_match_score", "match_score"),
-        Index("idx_match_status", "verification_status"),
-        Index("idx_match_review", "verification_status", "match_score"),
-    )
-    
-    def __repr__(self) -> str:
-        return f"<RunnerSwimmerMatch(id={self.match_id}, score={self.match_score}, status='{self.verification_status}')>"
-
-
 class Classification(Base):
     """
     Performance classification results against USA Triathlon standards.
@@ -253,7 +155,6 @@ class Classification(Base):
     class_id = Column(Integer, primary_key=True, autoincrement=True)
     
     # Foreign keys
-    match_id = Column(Integer, ForeignKey("runner_swimmer_match.match_id"), nullable=False)
     standard_id = Column(Integer, ForeignKey("time_standards.standard_id"), nullable=False)
     
     # Classification results
@@ -271,7 +172,6 @@ class Classification(Base):
     classification_timestamp = Column(DateTime, nullable=False, default=func.now())
     
     # Relationships
-    match = relationship("RunnerSwimmerMatch", back_populates="classifications")
     standard = relationship("TimeStandard", back_populates="classifications")
     
     # Constraints
