@@ -8,6 +8,8 @@ from db.models import Runner
 
 from typing import List, Any
 
+from opentelemetry import trace
+#from azure.monitor.opentelemetry import configure_azure_monitor
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
 from azure.ai.agents.models import (
@@ -18,103 +20,111 @@ from azure.ai.agents.models import (
 )
 
 sys.path.append(str(Path(__file__).parent.parent))
+print(f"DATABASE_URL: {os.getenv('DATABASE_URL')}")
 
-# Create an Azure AI Client from an endpoint, copied from your Azure AI Foundry project.
-project_endpoint = os.environ["PROJECT_ENDPOINT"]  # Ensure the PROJECT_ENDPOINT environment variable is set
-
-# Create an AIProjectClient instance
-project_client = AIProjectClient(
-    endpoint=project_endpoint,
-    credential=DefaultAzureCredential(),  # Use Azure Default Credential for authentication
-    api_version="latest",
-)
-
-# Get Bing connection using the correct argument name
-bing_connection = project_client.connections.get(os.environ["BING_CONNECTION_NAME"])
-conn_id = bing_connection.id
-bing_tool = BingGroundingTool(connection_id=conn_id)
-print(conn_id)
-
-file_path = "./etl/match.md"
-
-file = project_client.agents.files.upload_and_poll(file_path=file_path, purpose=FilePurpose.AGENTS)
-print(f"Uploaded file, file ID: {file.id}")
-
-vector_store = project_client.agents.vector_stores.create_and_poll(file_ids=[file.id], name="my_vectorstore")
-print(f"Created vector store, vector store ID: {vector_store.id}")
-file_search = FileSearchTool(vector_store_ids=[vector_store.id])
-
-# Use a list of tool model objects, not ToolSet
-TOOLS = [bing_tool, file_search]
-
+from sqlalchemy import inspect
+session = get_db_session()
+engine = session.get_bind()
+if engine.dialect.name == "sqlite":
+    print(f"Connected SQLite DB file: {engine.url.database}")
+session.close()
 
 def use_agent(runner_id: id) -> str:
+    project_endpoint = os.environ["PROJECT_ENDPOINT"]  # Ensure the PROJECT_ENDPOINT environment variable is set
 
-    system_prompt = (
-        """Determine if a given NCAA runner has a previous swimming background.
-        Given a runner's profile: first name, last name, college team.
-        1. Build a query: 'name' + 'college team' + 'track and field'. Find runner's college profile using Bing Search. 
-        2. Create the query: 'name' + 'hometown' + 'SwimCloud'. Then use Bing Search to look for possible matches on SwimCloud, a public swimming results website.
-        3. Use file search tool and the match.md file to calculate a match score for the runner, decide if the runner has a swim background and evaluate the strength of your decision. You must use the point values and criteria exactly as described in match.md. For each match, add up the points only from the criteria that are explicitly met. Do not round up, estimate, or invent new scoring rules
-        4. Respond ONLY with a valid JSON object:
-        {
-        "name": ...,
-        "college": ...,
-        "high_school": ...,
-        "hometown": ...,
-        "swimmer": ...,
-        "score": ...,
-        "match_confidence": ...
-        }
-        No extra text or formatting.
-
-        Example:
-        Input: Christian Jackson, Virginia Tech
-        Output:
-        {"name": "Christian Jackson", "college": "Virginia Tech", "high_school": "Colonial Forge", "hometown": "Stafford, VA", "swimmer": "No", "score": 60, "match_confidence": "High"}
-    """)
-    
-    agent = project_client.agents.create_agent(
-        name = "ValidateSwimBackground",
-        instructions= system_prompt,
-        temperature= 0.4,
-        tools=TOOLS  # Pass as 'tools', not 'toolset'
+    # Create an AIProjectClient instance
+    project_client = AIProjectClient(
+        endpoint=project_endpoint,
+        credential=DefaultAzureCredential(),  # Use Azure Default Credential for authentication
     )
 
-    # Create a new thread for the agent interaction
-    thread = project_client.agents.threads.create()
+    with project_client: 
+        bing_connection = project_client.connections.get(os.environ["BING_CONNECTION_NAME"])
+        conn_id = bing_connection.id
+        bing_tool = BingGroundingTool(connection_id=conn_id)
+        print(conn_id)
 
-    session = get_db_session()
-    runner = session.query(Runner).filter(Runner.runner_id == runner_id).first()
-    runner_info = f"{runner.first_name} {runner.last_name}, {runner.college_team}"
+        file_path = "./etl/match.md"
 
-    # Create a user message with the runner information
-    message = project_client.agents.messages.create(
-        thread_id=thread.id,
-        role="user",
-        content=runner_info,
-    )
-    
-    # Run the agent with the created thread
-    run = project_client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
+        file = project_client.agents.files.upload_and_poll(file_path=file_path, purpose=FilePurpose.AGENTS)
+        print(f"Uploaded file, file ID: {file.id}")
 
-    # Check if the run was successful
-    if run.status == "failed":
-        return f"Run failed: {run.last_error}"
-    
-    # Fetch and return the assistant's response
-    messages = project_client.agents.messages.list(thread_id=thread.id)
+        vector_store = project_client.agents.vector_stores.create_and_poll(file_ids=[file.id], name="my_vectorstore")
+        print(f"Created vector store, vector store ID: {vector_store.id}")
+        file_search = FileSearchTool(vector_store_ids=[vector_store.id])
 
-    #response_message = project_client.messages.get_last_message_by_role(thread_id=thread.id, role="assistant")
-    for message in messages:
-        if message.role == "assistant":
-            #print(f"Assistant response: {message.content[0]['text']['value']}")
-            response = json.loads(message.content[0]['text']['value'])
-            project_client.agents.threads.delete(thread_id=thread.id)
-            return response
-    
-    project_client.agents.threads.delete(thread_id=thread.id)
-    return "No assistant response found."
+        toolset = ToolSet()
+        toolset.add(bing_tool)
+        toolset.add(file_search)
+
+        system_prompt = (
+            """Determine if a given NCAA runner has a previous swimming background.
+            Given a runner's profile: first name, last name, college team.
+            1. Build a query: 'name' + 'college team' + 'track and field'. Find runner's college profile using Bing Search. 
+            2. Create the query: 'name' + 'hometown' + 'SwimCloud'. Then use Bing Search to look for possible matches on SwimCloud, a public swimming results website.
+            3. Use file search tool and the match.md file to calculate a match score for the runner, decide if the runner has a swim background and evaluate the strength of your decision. You must use the point values and criteria exactly as described in match.md. For each match, add up the points only from the criteria that are explicitly met. Do not round up, estimate, or invent new scoring rules
+            4. Respond ONLY with a valid JSON object:
+            {
+            "name": ...,
+            "college": ...,
+            "high_school": ...,
+            "hometown": ...,
+            "swimmer": ...,
+            "score": ...,
+            "match_confidence": ...
+            }
+            No extra text or formatting.
+
+            Example:
+            Input: Christian Jackson, Virginia Tech
+            Output:
+            {"name": "Christian Jackson", "college": "Virginia Tech", "high_school": "Colonial Forge", "hometown": "Stafford, VA", "swimmer": "No", "score": 60, "match_confidence": "High"}
+        """)
+        
+        agent = project_client.agents.create_agent(
+            name = "ValidateSwimBackground",
+            model = "gpt-4.1",
+            instructions= system_prompt,
+            temperature= 0.1,
+            toolset=toolset,
+        )
+
+        #project_client.agents.enable_auto_function_calls(toolset)
+
+        # Create a new thread for the agent interaction
+        thread = project_client.agents.threads.create(tool_resources=file_search.resources)
+
+        session = get_db_session()
+        runner = session.query(Runner).filter(Runner.runner_id == runner_id).first()
+        runner_info = f"{runner.first_name} {runner.last_name}, {runner.college_team}"
+
+        # Create a user message with the runner information
+        message = project_client.agents.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=runner_info,
+        )
+        
+        # Run the agent with the created thread
+        run = project_client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
+
+        # Check if the run was successful
+        if run.status == "failed":
+            return f"Run failed: {run.last_error}"
+        
+        # Fetch and return the assistant's response
+        messages = project_client.agents.messages.list(thread_id=thread.id)
+
+        #response_message = project_client.messages.get_last_message_by_role(thread_id=thread.id, role="assistant")
+        for message in messages:
+            if message.role == "assistant":
+                #print(f"Assistant response: {message.content[0]['text']['value']}")
+                response = json.loads(message.content[0]['text']['value'])
+                #project_client.agents.threads.delete(thread_id=thread.id)
+                return response
+        
+        #project_client.agents.threads.delete(thread_id=thread.id)
+        return "No assistant response found."
 
 def get_next_runner_id() -> int:
     """
@@ -229,7 +239,7 @@ def main():
         {"name": "Christian Jackson", "college": "Virginia Tech", "high_school": "Colonial Forge", "hometown": "Stafford, VA", "swimmer": "No", "score": 50, "match_confidence": "High"}
     """)
     processed = 0
-    max_batch = 200
+    max_batch = 2
     while processed < max_batch:
         next_runner = get_next_runner_id()
         if next_runner != -1:

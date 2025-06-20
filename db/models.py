@@ -35,7 +35,7 @@ Base = declarative_base()
 # Database-agnostic JSON type
 def get_json_type():
     """Return appropriate JSON type based on database URL."""
-    database_url = os.getenv("DATABASE_URL", "sqlite:///data/tri_talent.db")
+    database_url = os.getenv("DATABASE_URL", "sqlite:///C:/Users/jhigh/OneDrive/Personal Projects/Databases/tri_talent.db")
     if database_url.startswith("postgresql"):
         return JSONB
     else:
@@ -43,7 +43,7 @@ def get_json_type():
 
 def get_array_type():
     """Return appropriate array type based on database URL."""
-    database_url = os.getenv("DATABASE_URL", "sqlite:///data/tri_talent.db")
+    database_url = os.getenv("DATABASE_URL", "sqlite:///C:/Users/jhigh/OneDrive/Personal Projects/Databases/tri_talent.db")
     if database_url.startswith("postgresql"):
         return ARRAY(String)
     else:
