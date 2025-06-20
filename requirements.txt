@@ -43,3 +43,9 @@ pre-commit==3.7.0
 
 aiohttp==3.9.4
 azure-ai-openai==1.0.0
+azure-ai-projects==0.1.0
+azure-ai-ml==1.0.0
+azure-identity==1.14.1
+
+
+

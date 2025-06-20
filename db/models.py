@@ -96,6 +96,7 @@ class Runner(Base):
         Index("idx_runner_name", "last_name", "first_name"),
         Index("idx_runner_event_year", "event", "year"),
         Index("idx_runner_team", "college_team"),
+        UniqueConstraint('first_name', 'last_name', name='uq_runner_identity'),
     )
     
     def __repr__(self) -> str:
