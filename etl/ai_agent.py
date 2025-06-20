@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import time
 from pathlib import Path
 from db.db_connection import get_db_session
 from db.models import Runner
@@ -13,7 +14,6 @@ from azure.ai.agents.models import (
     BingGroundingTool,
     FilePurpose,
     FileSearchTool,
-    FunctionTool,
     ToolSet,
 )
 
@@ -26,19 +26,67 @@ project_endpoint = os.environ["PROJECT_ENDPOINT"]  # Ensure the PROJECT_ENDPOINT
 project_client = AIProjectClient(
     endpoint=project_endpoint,
     credential=DefaultAzureCredential(),  # Use Azure Default Credential for authentication
-    #api_version="latest",
+    api_version="latest",
 )
+
+# Get Bing connection using the correct argument name
+bing_connection = project_client.connections.get(os.environ["BING_CONNECTION_NAME"])
+conn_id = bing_connection.id
+bing_tool = BingGroundingTool(connection_id=conn_id)
+print(conn_id)
+
+file_path = "./etl/match.md"
+
+file = project_client.agents.files.upload_and_poll(file_path=file_path, purpose=FilePurpose.AGENTS)
+print(f"Uploaded file, file ID: {file.id}")
+
+vector_store = project_client.agents.vector_stores.create_and_poll(file_ids=[file.id], name="my_vectorstore")
+print(f"Created vector store, vector store ID: {vector_store.id}")
+file_search = FileSearchTool(vector_store_ids=[vector_store.id])
+
+# Use a list of tool model objects, not ToolSet
+TOOLS = [bing_tool, file_search]
 
 
 def use_agent(runner_id: id) -> str:
-    agent = project_client.agents.get_agent("asst_yGc1n6WeUULxruHX3TCbG61U")
+
+    system_prompt = (
+        """Determine if a given NCAA runner has a previous swimming background.
+        Given a runner's profile: first name, last name, college team.
+        1. Build a query: 'name' + 'college team' + 'track and field'. Find runner's college profile using Bing Search. 
+        2. Create the query: 'name' + 'hometown' + 'SwimCloud'. Then use Bing Search to look for possible matches on SwimCloud, a public swimming results website.
+        3. Use file search tool and the match.md file to calculate a match score for the runner, decide if the runner has a swim background and evaluate the strength of your decision. You must use the point values and criteria exactly as described in match.md. For each match, add up the points only from the criteria that are explicitly met. Do not round up, estimate, or invent new scoring rules
+        4. Respond ONLY with a valid JSON object:
+        {
+        "name": ...,
+        "college": ...,
+        "high_school": ...,
+        "hometown": ...,
+        "swimmer": ...,
+        "score": ...,
+        "match_confidence": ...
+        }
+        No extra text or formatting.
+
+        Example:
+        Input: Christian Jackson, Virginia Tech
+        Output:
+        {"name": "Christian Jackson", "college": "Virginia Tech", "high_school": "Colonial Forge", "hometown": "Stafford, VA", "swimmer": "No", "score": 60, "match_confidence": "High"}
+    """)
+    
+    agent = project_client.agents.create_agent(
+        name = "ValidateSwimBackground",
+        instructions= system_prompt,
+        temperature= 0.4,
+        tools=TOOLS  # Pass as 'tools', not 'toolset'
+    )
 
     # Create a new thread for the agent interaction
     thread = project_client.agents.threads.create()
 
     session = get_db_session()
     runner = session.query(Runner).filter(Runner.runner_id == runner_id).first()
-    runner_info = f"{runner.first_name} {runner.last_name}, College: {runner.college_team}"
+    runner_info = f"{runner.first_name} {runner.last_name}, {runner.college_team}"
 
     # Create a user message with the runner information
     message = project_client.agents.messages.create(
@@ -56,10 +104,16 @@ def use_agent(runner_id: id) -> str:
     
     # Fetch and return the assistant's response
     messages = project_client.agents.messages.list(thread_id=thread.id)
+
+    #response_message = project_client.messages.get_last_message_by_role(thread_id=thread.id, role="assistant")
     for message in messages:
         if message.role == "assistant":
-            return message.content
+            #print(f"Assistant response: {message.content[0]['text']['value']}")
+            response = json.loads(message.content[0]['text']['value'])
+            project_client.agents.threads.delete(thread_id=thread.id)
+            return response
     
+    project_client.agents.threads.delete(thread_id=thread.id)
     return "No assistant response found."
 
 def get_next_runner_id() -> int:
@@ -115,41 +169,94 @@ def update_runner_with_agent_output(runner_id: int, agent_output: dict) -> None:
         runner.swimmer = agent_output.get("swimmer")
         runner.score = agent_output.get("score")
         runner.match_confidence = agent_output.get("match_confidence")
-        runner.class_year = agent_output.get("class")
         session.commit()
-        print(f"Runner {runner.id} updated with agent output.")
+        print(f"Runner {runner.runner_id} updated with agent output.")
     except Exception as e:
         session.rollback()
         print(f"Error updating runner: {e}")
     finally:
         session.close()
-        
-def parse_agent_response(response):
+    
+
+def append_training_example(system_prompt: str, user_message: str, assistant_response: dict, jsonl_path: str = "etl/data/training_data.jsonl") -> None:
     """
-    Extract and parse the agent's JSON output from the response list.
+    Append a training example to the JSONL file in the required structure.
     """
-    if isinstance(response, list) and response:
-        msg = response[0]
-        json_str = msg.get('text', {}).get('value', None)
-        if json_str:
-            return json.loads(json_str)
-    return None
+    # Format the assistant's response as a readable string
+    response_lines = [
+        f"Name: {assistant_response.get('name', '')}",
+        f"College: {assistant_response.get('college', '')}",
+        f"High School: {assistant_response.get('high_school', '')}",
+        f"Hometown: {assistant_response.get('hometown', '')}",
+        f"Swimmer: {assistant_response.get('swimmer', '')}",
+        f"Score: {assistant_response.get('score', '')}",
+        f"Match Confidence: {assistant_response.get('match_confidence', '')}"
+    ]
+    assistant_content = "\n" + "\n".join(response_lines)
+    entry = {
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+            {"role": "assistant", "content": assistant_content}
+        ]
+    }
+    with open(jsonl_path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 def main():
-    next_runner = get_next_runner_id()
-    if next_runner != -1:
+    system_prompt = (
+        """Determine if a given NCAA runner has a previous swimming background.
+        Given a runner's profile: first name, last name, college team.
+        1. Build a query: 'name' + 'college team' + 'track and field'. Find runner's college profile. 
+        2. Create the query: 'name' + 'hometown' + 'SwimCloud'.
+        3. Search for possible matches on SwimCloud, a public swimming results website.
+        4. Use file search and the match.md file to calculate a match score for the runner. You must use the point values and criteria exactly as described in match.md. For each match, add up the points only from the criteria that are explicitly met. Do not round up, estimate, or invent new scoring rules
+        5. Respond ONLY with a valid JSON object:
+        {
+        "name": ...,
+        "college": ...,
+        "high_school": ...,
+        "hometown": ...,
+        "swimmer": ...,
+        "score": ...,
+        "match_confidence": ...
+        }
+        No extra text or formatting.
 
-        print(f"Processing runner: {next_runner}")
-        response = use_agent(next_runner)
-        response = json.loads(response)
-        agent_output = parse_agent_response(response)
-        if agent_output:
-            update_runner_with_agent_output(next_runner, agent_output)
-            print(f"AI Agent Response: {agent_output}")
+        Example:
+        Input: Christian Jackson, Virginia Tech
+        Output:
+        {"name": "Christian Jackson", "college": "Virginia Tech", "high_school": "Colonial Forge", "hometown": "Stafford, VA", "swimmer": "No", "score": 50, "match_confidence": "High"}
+    """)
+    processed = 0
+    max_batch = 200
+    while processed < max_batch:
+        next_runner = get_next_runner_id()
+        if next_runner != -1:
+            print(f"Processing runner: {next_runner}")
+            # Build user message for training data
+            session = get_db_session()
+            runner = session.query(Runner).filter(Runner.runner_id == next_runner).first()
+            user_message = f"{runner.first_name} {runner.last_name}, {runner.college_team}"
+            agent_output = use_agent(next_runner)
+            if agent_output:
+                try:
+                    update_runner_with_agent_output(next_runner, agent_output)
+                    print(f"AI Agent Response: {agent_output}")
+                    # Save to training data
+                    append_training_example(system_prompt, user_message, agent_output)
+                except Exception as e:
+                    print(f"Could not parse agent output: {e}")
+            else:
+                print("No agent response.")
+            processed += 1
+            if processed < max_batch:
+                print("Waiting 40 seconds before next runner...")
+                time.sleep(50)
         else:
-            print("Could not parse agent output.")
-    else:
-        print("No runners to process.")
+            print("No runners to process. Exiting.")
+            break
+    print(f"Batch complete. Processed {processed} runner(s).")
 
 if __name__ == "__main__":
     main()

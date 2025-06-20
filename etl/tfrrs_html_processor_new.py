@@ -351,41 +351,64 @@ def process_html_file(file_path: str) -> List[Dict[str, str]]:
 
 
 def store_athletes(athletes: List[Dict]) -> None:
-    """Store athletes in the database."""
+    """Store athletes in the database, upserting by first_name + last_name."""
     if not athletes:
         logger.info("No athletes to store")
         return
-        
+
     engine = get_engine()
     try:
         with Session(engine) as session:
             stored_count = 0
             for data in athletes:
-                runner = Runner(
+                # Try to find an existing runner by first_name + last_name
+                runner = session.query(Runner).filter_by(
                     first_name=data['first_name'],
-                    last_name=data['last_name'],
-                    college_team=data['college_team'],
-                    event=data['event'],
-                    performance_time=data['performance_time'],
-                    year=data['year_scraped'],
-                    gender=data['gender'],
-                    birth_year=None,
-                    class_year=data.get('class_year', None),  # Store class_year in top-level column
-                    scrape_timestamp=data['scrape_timestamp'],
-                    raw_data={
+                    last_name=data['last_name']
+                ).first()
+                if runner:
+                    # Update fields
+                    runner.college_team = data['college_team']
+                    runner.event = data['event']
+                    runner.performance_time = data['performance_time']
+                    runner.year = data['year_scraped']
+                    runner.gender = data['gender']
+                    runner.class_year = data.get('class_year', None)
+                    runner.scrape_timestamp = data['scrape_timestamp']
+                    runner.raw_data = {
                         'raw_performance': data['raw_performance'],
                         'class_year': data.get('class_year', ''),
                         'meet_name': data.get('meet_name', ''),
                         'meet_date': data.get('meet_date', ''),
                         'scrape_source': 'TFRRS_HTML'
                     }
-                )
-                session.merge(runner)
+                else:
+                    # Insert new runner
+                    runner = Runner(
+                        first_name=data['first_name'],
+                        last_name=data['last_name'],
+                        college_team=data['college_team'],
+                        event=data['event'],
+                        performance_time=data['performance_time'],
+                        year=data['year_scraped'],
+                        gender=data['gender'],
+                        birth_year=None,
+                        class_year=data.get('class_year', None),
+                        scrape_timestamp=data['scrape_timestamp'],
+                        raw_data={
+                            'raw_performance': data['raw_performance'],
+                            'class_year': data.get('class_year', ''),
+                            'meet_name': data.get('meet_name', ''),
+                            'meet_date': data.get('meet_date', ''),
+                            'scrape_source': 'TFRRS_HTML'
+                        }
+                    )
+                    session.add(runner)
                 stored_count += 1
-                
+
             session.commit()
             logger.info(f"Successfully stored {stored_count} athletes in database")
-            
+
     except Exception as e:
         logger.error(f"Database error: {e}")
         raise
