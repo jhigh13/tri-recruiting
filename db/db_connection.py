@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Database configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/tri_talent.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///C:/Users/jhigh/OneDrive/Personal Projects/Databases/tri_talent.db")
 
 # Connection pool configuration
 POOL_SIZE = 10
