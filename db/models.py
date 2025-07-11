@@ -76,7 +76,13 @@ class Runner(Base):
     # Optional enrichment data (may be populated later)
     hometown = Column(String(200))
     birth_year = Column(Integer)
+    swim_background = Column(String, nullable=True)
+    runner_url = Column(String, nullable=True)
+    runner_text = Column(String, nullable=True)
     
+    swim_url = Column(String, nullable=True)  # Link to SwimCloud profile
+    swim_text = Column(String, nullable=True)  # Raw HTML/text from SwimCloud
+
     # New fields for AI agent output
     high_school = Column(String(200))
     class_year = Column(String(50))  # e.g., "Senior", "Junior"
