@@ -82,6 +82,8 @@ class Runner(Base):
     
     swim_url = Column(String, nullable=True)  # Link to SwimCloud profile
     swim_text = Column(String, nullable=True)  # Raw HTML/text from SwimCloud
+    excel_swimmer = Column(Boolean, default=False)  # find the previously classified swimmer value from the excel file
+    excel_match = Column(Boolean, default=False)  # if the runner was matched to a name in the excel file
 
     # New fields for AI agent output
     high_school = Column(String(200))
