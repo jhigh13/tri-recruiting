@@ -26,7 +26,7 @@ from sqlalchemy import (
     Index, UniqueConstraint, CheckConstraint, Boolean, JSON
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -85,6 +85,7 @@ class Runner(Base):
     excel_swimmer = Column(Boolean, default=False)  # find the previously classified swimmer value from the excel file
     excel_match = Column(Boolean, default=False)  # if the runner was matched to a name in the excel file
     rationale = Column(Text, nullable=True)  # Reasoning for classification decision
+    majority_score = Column(Integer, nullable=True)  # Majority score from AI agent classification 
 
     # New fields for AI agent output
     high_school = Column(String(200))
