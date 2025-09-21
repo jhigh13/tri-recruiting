@@ -86,6 +86,7 @@ class Runner(Base):
     excel_match = Column(Boolean, default=False)  # if the runner was matched to a name in the excel file
     rationale = Column(Text, nullable=True)  # Reasoning for classification decision
     majority_score = Column(Integer, nullable=True)  # Majority score from AI agent classification 
+    review_date = Column(DateTime, nullable=True)  # Timestamp when manual/agent review exported
 
     # New fields for AI agent output
     high_school = Column(String(200))
