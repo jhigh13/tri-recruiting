@@ -3,7 +3,7 @@
 Features:
 - Auto-add review_date column to SQLite if missing (lightweight migration).
 - Select runners where excel_match == True, excel_swimmer IS NULL, swimmer NOT NULL.
-- Write/update columns: Swimmer, Match_Confidence, Rationale, Majority_Score, Review_Date.
+- Write/update columns: Swimmer, Match_Confidence, Rationale, Majority_Score, Review_Date, Runner_URL, Swim_URL.
 - Preserve original casing of names (DB stores lowercase; spreadsheet expected mixed). Match is done case-insensitive.
 - Supports --dry-run to preview actions and --output to write to a new file.
 
@@ -32,7 +32,13 @@ from db.db_connection import get_db_session
 from db.models import Runner
 
 REQUIRED_OUTPUT_COLUMNS = [
-    "Swimmer", "Match_Confidence", "Rationale", "Majority_Score", "Review_Date"
+    "Swimmer",
+    "Match_Confidence",
+    "Rationale",
+    "Majority_Score",
+    "Review_Date",
+    "Runner_URL",
+    "Swim_URL",
 ]
 
 NAME_COL_MAP = {
@@ -119,6 +125,8 @@ def apply_updates(df: pd.DataFrame, first_col: str, last_col: str, college_col: 
             df.at[idx, "Rationale"] = r.rationale
             df.at[idx, "Majority_Score"] = r.majority_score
             df.at[idx, "Review_Date"] = now_str
+            df.at[idx, "Runner_URL"] = r.runner_url
+            df.at[idx, "Swim_URL"] = r.swim_url
             updated += 1
             touched.add(r.runner_id)
         if not dry_run:
@@ -229,6 +237,8 @@ def main():
                             "Match_Confidence": r.match_confidence,
                             "Rationale": r.rationale,
                             "Review_Date": r.review_date.strftime("%Y-%m-%d %H:%M:%S") if r.review_date else None,
+                            "Runner_URL": r.runner_url,
+                            "Swim_URL": r.swim_url,
                         })
                     if summary_rows:
                         pd.DataFrame(summary_rows).sort_values(
